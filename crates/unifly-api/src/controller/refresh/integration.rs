@@ -139,7 +139,7 @@ async fn fetch_network_details(
         }
     }))
     .buffer_unordered(REFRESH_DETAIL_CONCURRENCY)
-    .filter_map(async move |network| network)
+    .filter_map(|network| async move { network })
     .collect::<Vec<_>>()
     .await
 }
