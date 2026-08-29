@@ -201,7 +201,7 @@ fn default_effects() -> bool {
 }
 
 /// A named controller profile.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Profile {
     /// Controller base URL (e.g., "https://192.168.1.1").
     #[serde(default)]
@@ -247,6 +247,26 @@ pub struct Profile {
 
     /// Override timeout.
     pub timeout: Option<u64>,
+}
+
+impl std::fmt::Debug for Profile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Profile")
+            .field("controller", &self.controller)
+            .field("site", &self.site)
+            .field("auth_mode", &self.auth_mode)
+            .field("api_key", &self.api_key.as_ref().map(|_| "[REDACTED]"))
+            .field("api_key_env", &self.api_key_env)
+            .field("host_id", &self.host_id)
+            .field("host_id_env", &self.host_id_env)
+            .field("username", &self.username)
+            .field("password", &self.password.as_ref().map(|_| "[REDACTED]"))
+            .field("totp_env", &self.totp_env)
+            .field("ca_cert", &self.ca_cert)
+            .field("insecure", &self.insecure)
+            .field("timeout", &self.timeout)
+            .finish()
+    }
 }
 
 fn default_site() -> String {
@@ -611,6 +631,20 @@ mod tests {
             insecure: Some(true),
             timeout: Some(45),
         }
+    }
+
+    /// Regression: `{:?}` on a `Profile` must never leak `api_key`/`password`
+    /// into logs or traces.
+    #[test]
+    fn profile_debug_redacts_secrets() {
+        let mut profile = cloud_profile();
+        profile.password = Some("super-secret-password".into());
+
+        let debug_output = format!("{profile:?}");
+
+        assert!(!debug_output.contains("cloud-key"));
+        assert!(!debug_output.contains("super-secret-password"));
+        assert!(debug_output.contains("[REDACTED]"));
     }
 
     #[test]

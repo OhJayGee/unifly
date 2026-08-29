@@ -54,7 +54,19 @@ pub(super) async fn handle(args: ConfigArgs, global: &GlobalOpts) -> Result<(), 
                     }
                     profile.auth_mode = normalized;
                 }
-                "api_key" | "api-key" => profile.api_key = Some(value),
+                "api_key" | "api-key" => {
+                    let secret = if value.is_empty() {
+                        rpassword::prompt_password("API key: ").map_err(CliError::Io)?
+                    } else {
+                        eprintln!(
+                            "warning: passing secrets on the command line exposes them in shell \
+                             history and process listings; prefer `unifly config set api_key` \
+                             with an empty value to be prompted securely"
+                        );
+                        value
+                    };
+                    profile.api_key = Some(secret);
+                }
                 "api_key_env" | "api-key-env" => profile.api_key_env = Some(value),
                 "host_id" | "host-id" => profile.host_id = Some(value),
                 "host_id_env" | "host-id-env" => profile.host_id_env = Some(value),
